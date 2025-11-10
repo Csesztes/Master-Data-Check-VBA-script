@@ -1,0 +1,10 @@
+Private Sub Workbook_BeforeClose(Cancel As Boolean)
+    Application.StatusBar = ""
+End Sub
+
+Private Sub Workbook_Open()
+    Application.StatusBar = "1. Press CTRL + M to copy files from email, 2. Press CTRL + U to refresh table ... "
+    Application.OnKey "^u", "main"
+    Application.OnKey "^m", "main_copyEmails"
+End Sub
+
