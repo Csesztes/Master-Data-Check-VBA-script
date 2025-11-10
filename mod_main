@@ -1,0 +1,133 @@
+Option Explicit
+
+Dim lastrow As Long
+Dim headerRowCount As Integer
+Const col_color As String = "15320233"
+Const col_basiclists As Integer = 4
+Const col_files As Integer = 2
+Const col_result_basic As Integer = 8
+Const col_result_files As Integer = 9
+Const col_accuracy As Integer = 10
+Const col_withinTolerance As Integer = 11
+Const main_FolderPath As String = _
+    "dummyPath"
+Const startingQeustion As String = "Would you like to refresh the report?"
+Const sharepoint_link As String = _
+    "dummyPath2"
+
+Sub preFormatting()
+    
+    With ws_main
+        .Range("A2", Range("A2").End(xlToRight)).AutoFilter
+        .Columns("H:K").Insert Shift:=xlToRight
+        .Range("H1").Value = Date
+        .Range("H2").Value = "Total"
+        .Range("I2").Value = "Error"
+        .Range("J2").Value = "Accuracy"
+        .Range("K2").Value = "Within Tolerance"
+        
+        lastrow = .UsedRange.Rows.Count
+    End With
+    
+    
+    With Range("H3:H" & lastrow).Borders(xlEdgeLeft)
+        .LineStyle = xlContinuous
+        .Weight = xlThick
+        .Color = vbRed
+    End With
+    
+End Sub
+
+Function getNumberOfHeaderRow(ByVal mywb As Workbook) As Integer
+
+    If mywb.Sheets(1).Range("A2").Interior.Color = col_color Then
+       getNumberOfHeaderRow = 2
+    ElseIf mywb.Sheets(1).Range("A2").Interior.Color <> col_color And mywb.Sheets(1).Range("A1").Interior.Color = col_color Then
+        getNumberOfHeaderRow = 1
+    Else
+        getNumberOfHeaderRow = 0
+    End If
+    
+End Function
+
+Sub get_filenames(col_index As Integer, resultColIndex As Integer, runCalcs As Boolean)
+    
+    lastrow = ws_main.Cells(3, col_index).End(xlDown).Row
+    Dim FileName, filepath  As String
+    Dim tempwb, currentwb As Workbook
+    Dim temp_coll As New Collection
+    Dim x, currentlastrow As Long
+    For x = 3 To lastrow Step 1
+    
+       FileName = ws_main.Cells(x, col_index).Value
+       filepath = main_FolderPath & FileName & ".xlsx"
+       
+       On Error Resume Next
+       Set tempwb = Workbooks.Open(filepath)
+       
+       'getNumber of headers
+       headerRowCount = getNumberOfHeaderRow(tempwb)
+       
+       If Err.Number <> 0 Then
+            currentlastrow = 0
+            ws_main.Cells(x, resultColIndex).Value = currentlastrow
+        Else
+            currentlastrow = tempwb.Sheets(1).UsedRange.Rows.Count - headerRowCount '-2 is for deducing headers
+            ws_main.Cells(x, resultColIndex).Value = currentlastrow
+        End If
+    
+       Err.Clear
+       tempwb.Close False
+           
+       If runCalcs = True Then 'only run this part when basic list data is being extracted
+            
+            'Debug.Print ws_main.Cells(x, col_result_files).Value, " | ", ws_main.Cells(x, col_result_basic).Value
+            ws_main.Cells(x, col_accuracy).Value = 1 - (ws_main.Cells(x, col_result_files).Value / ws_main.Cells(x, col_result_basic).Value)
+            ws_main.Cells(x, col_accuracy).NumberFormat = "0%"
+            
+            If ws_main.Cells(x, 5).Value < ws_main.Cells(x, col_result_files).Value Then
+                 ws_main.Cells(x, col_withinTolerance).Value = "No"
+             Else
+                 ws_main.Cells(x, col_withinTolerance).Value = "Yes"
+             End If
+             
+       End If
+    Next x
+    
+    ws_main.Columns.AutoFit
+    ThisWorkbook.Save
+    
+End Sub
+    
+Sub send_email()
+
+    Dim myMail As clsOlMail
+    Set myMail = New clsOlMail
+    
+    With myMail
+        .sendTO = ShParameters.Range("B3").Value
+        .ccSendTO = ShParameters.Range("B4").Value
+        .Subject = "RR masterData Accuracy Validation "
+        .createMail _
+            switchSend:=True, _
+            emailBody:="Dear Recipients! " & "<br><b\r>" & "<br><b\r>" & "Please find the report attached or in the link below." & "<br><b\r>" & "<br><b\r>" & "<a href=" & "'" & sharepoint_link & "'" & "> Folder link</a>"
+    End With
+    
+End Sub
+
+Sub main()
+    
+    If confirm_action(startingQeustion) = True Then
+    
+        speedControl (False)
+        
+        preFormatting
+        get_filenames col_files, col_result_files, False
+        get_filenames col_basiclists, col_result_basic, True
+        send_email
+        
+        speedControl (True)
+    
+    End If
+    
+End Sub
