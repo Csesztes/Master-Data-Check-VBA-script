@@ -1,0 +1,28 @@
+Option Explicit
+
+Public Function get_Userprofile() As String
+    
+    get_Userprofile = Environ("Userprofile")
+    
+End Function
+
+Sub speedControl(myval As Boolean)
+
+    Application.DisplayAlerts = myval
+    Application.ScreenUpdating = myval
+    
+End Sub
+
+Function confirm_action(question As String) As Boolean
+    
+    Dim answer As VbMsgBoxResult
+    answer = MsgBox(question, vbYesNo + vbQuestion)
+    
+    If answer = vbYes Then
+        confirm_action = True
+    Else
+        confirm_action = False
+        MsgBox "Action aborted!"
+    End If
+    
+End Function
