@@ -1,0 +1,88 @@
+Sub deleteFiles()
+
+    Dim getUserDetails As String
+    getUserDetails = get_Userprofile
+
+    Dim main_FolderPath As String
+    main_FolderPath = get_Userprofile & "\dummyPath\"
+    
+    Dim FileName As String
+    FileName = Dir(main_FolderPath)
+    
+    Debug.Print Dir(main_FolderPath)
+    
+    ' Loop through all files
+    Do While FileName <> ""
+        On Error Resume Next
+        Kill main_FolderPath & FileName
+        On Error GoTo 0
+        FileName = Dir()
+    Loop
+    
+End Sub
+
+Sub SaveTodayKeywordAttachmentsRestrict(myKeyword As String, mydate As Date)
+    Dim OutlookApp As Outlook.Application
+    Dim OutlookNamespace As Outlook.Namespace
+    Dim Inbox As Outlook.MAPIFolder
+    Dim Mail As Outlook.MailItem
+    Dim Item As Object
+    Dim Attach As Outlook.Attachment
+    Dim Keyword As String
+    Dim Filter As String
+    Dim Items As Outlook.Items
+    Dim i As Long
+    Dim main_FolderPath As String
+    
+    main_FolderPath = get_Userprofile & "\dummyPath\"
+    
+    ' Path where attachments are saved
+    Keyword = myKeyword
+    
+    
+    Set OutlookApp = New Outlook.Application
+    Set OutlookNamespace = OutlookApp.GetNamespace("MAPI")
+    Set Inbox = OutlookNamespace.GetDefaultFolder(olFolderInbox)
+    
+    ' ?? Create a filter for today’s date
+    Filter = "[ReceivedTime] >= '" & Format(mydate, "ddddd hh:mm") & "'"
+    
+    ' Restrict to only today’s items
+    Set Items = Inbox.Items.Restrict(Filter)
+    Items.Sort "[ReceivedTime]", True   ' Sort newest first
+    
+    ' Loop through filtered emails
+    For i = Items.Count To 1 Step -1
+        Set Item = Items(i)
+        If TypeName(Item) = "MailItem" Then
+            
+            'Debug.Print Item.SentOn, "|", Item.Sender.Address, "|", Item.Subject
+            
+            Set Mail = Item
+            
+            ' Check if subject contains keyword
+            If InStr(1, Mail.Subject, Keyword, vbTextCompare) > 0 Then
+                If Mail.Attachments.Count > 0 Then
+                    For Each Attach In Mail.Attachments
+                    Debug.Print main_FolderPath & Attach.FileName
+                        Attach.SaveAsFile main_FolderPath & Attach.FileName
+                        'Debug.Print "Saved: " & Attach.FileName
+                    Next Attach
+                End If
+            End If
+        End If
+    Next i
+    
+    MsgBox "Email contents have been copied successfully to oneDrive folder. Please wait a until oneDrive sync finishes.", vbInformation
+    
+End Sub
+
+Sub main_copyEmails()
+
+    If confirm_action("Would you like to save files from outlook to oneDrive folder?") = True Then
+        deleteFiles
+        SaveTodayKeywordAttachmentsRestrict ShParameters.Range("B1").Value, ShParameters.Range("B2").Value
+    End If
+    
+End Sub
+
