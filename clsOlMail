@@ -1,0 +1,52 @@
+Option Explicit
+
+Private olApp As Outlook.Application
+Private olMail As Outlook.MailItem
+Private pSubject As String
+Private psendTo As String
+Private pccSendTo As String
+
+Public Property Get Subject() As String
+    Subject = pSubject & " " & Date & " --- WK" & WorksheetFunction.WeekNum(Date)
+End Property
+
+Public Property Let Subject(myvalue As String)
+    pSubject = myvalue
+End Property
+
+Public Property Get sendTO() As String
+    sendTO = psendTo
+End Property
+
+Public Property Let sendTO(myvalue As String)
+    psendTo = myvalue
+End Property
+
+Public Property Get ccSendTO() As String
+    ccSendTO = pccSendTo
+End Property
+
+Public Property Let ccSendTO(myvalue As String)
+    pccSendTo = myvalue
+End Property
+
+Sub createMail(switchSend As Boolean, emailBody As String)
+    
+    Set olApp = New Outlook.Application
+    Set olMail = olApp.CreateItem(olMailItem)
+    
+    With olMail
+        .Display
+        .Subject = Subject
+        .Attachments.Add (ThisWorkbook.Path & "\" & ThisWorkbook.Name)
+        .To = sendTO
+        .CC = ccSendTO
+        .HTMLBody = emailBody & .HTMLBody
+        If switchSend = True Then
+            .send
+        End If
+    End With
+    
+End Sub
+
+
